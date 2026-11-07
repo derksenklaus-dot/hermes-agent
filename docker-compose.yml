@@ -26,13 +26,20 @@
 #     and API_SERVER_HOST. See docs/user-guide/api-server.md before doing
 #     this on an internet-facing host.
 #
+networks:
+  proxy-net:
+    external: true
+
 services:
   gateway:
     build: .
     image: hermes-agent
     container_name: hermes
     restart: unless-stopped
-    network_mode: host
+    networks:
+      - proxy-net
+    dns:
+      - 192.168.0.10
     volumes:
       - ~/.hermes:/opt/data
     environment:
@@ -64,7 +71,10 @@ services:
     image: hermes-agent
     container_name: hermes-dashboard
     restart: unless-stopped
-    network_mode: host
+    networks:
+      - proxy-net
+    dns:
+      - 192.168.0.10
     depends_on:
       - gateway
     volumes:
@@ -72,5 +82,6 @@ services:
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
-    # Localhost-only. For remote access, tunnel via `ssh -L 9119:localhost:9119`.
-    command: ["dashboard", "--host", "127.0.0.1", "--no-open"]
+    # Bound to proxy-net, fronted by NPM with basic-auth env vars in
+    # ~/.hermes/.env (HERMES_DASHBOARD_BASIC_AUTH_*). See homelab-patch.md.
+    command: ["dashboard", "--host", "0.0.0.0", "--no-open"]
