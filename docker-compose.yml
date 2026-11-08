@@ -45,6 +45,14 @@ services:
     environment:
       - HERMES_UID=${HERMES_UID:-10000}
       - HERMES_GID=${HERMES_GID:-10000}
+      # Dashboard runs in-process here (not as a separate container) so its
+      # lifecycle buttons (restart gateway, run cron job now, ...) act on the
+      # same /run/hermes-service slots instead of a dashboard-only container
+      # that never registers any per-profile gateway. Bound to proxy-net,
+      # fronted by NPM with basic-auth env vars in ~/.hermes/.env
+      # (HERMES_DASHBOARD_BASIC_AUTH_*). See homelab-patch.md.
+      - HERMES_DASHBOARD=1
+      - HERMES_DASHBOARD_HOST=0.0.0.0
       # To expose the OpenAI-compatible API server beyond localhost,
       # uncomment BOTH lines (API_SERVER_KEY is mandatory for auth):
       # - API_SERVER_HOST=0.0.0.0
@@ -66,22 +74,3 @@ services:
       # - GOOGLE_CHAT_SERVICE_ACCOUNT_JSON=${GOOGLE_CHAT_SERVICE_ACCOUNT_JSON}
       # - GOOGLE_CHAT_ALLOWED_USERS=${GOOGLE_CHAT_ALLOWED_USERS}
     command: ["gateway", "run"]
-
-  dashboard:
-    image: hermes-agent
-    container_name: hermes-dashboard
-    restart: unless-stopped
-    networks:
-      - proxy-net
-    dns:
-      - 192.168.0.10
-    depends_on:
-      - gateway
-    volumes:
-      - ~/.hermes:/opt/data
-    environment:
-      - HERMES_UID=${HERMES_UID:-10000}
-      - HERMES_GID=${HERMES_GID:-10000}
-    # Bound to proxy-net, fronted by NPM with basic-auth env vars in
-    # ~/.hermes/.env (HERMES_DASHBOARD_BASIC_AUTH_*). See homelab-patch.md.
-    command: ["dashboard", "--host", "0.0.0.0", "--no-open"]
